@@ -32,6 +32,7 @@ class LogEntry:
 class WriteAheadLog:
     def __init__(self, log_file_path: str):
         self.log_file_path = log_file_path
+        # This should ideally start from the last sequence number in the log
         self.sequence_counter = 0
         self._ensure_log_file_exists()
     
