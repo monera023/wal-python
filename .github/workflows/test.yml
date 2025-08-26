@@ -25,4 +25,4 @@ jobs:
       run: uv sync
     
     - name: Run tests
-      run: uv run -m unittest test.py -v
+      run: uv run -m unittest wal_tests.py -v
