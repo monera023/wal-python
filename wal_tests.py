@@ -1,8 +1,10 @@
 
+import time
 from wal_basic import WriteAheadLog, OperationType, LogEntry
 import unittest
 import tempfile
 import os
+import threading
 
 class TestWriteAheadLog(unittest.TestCase):
 
@@ -82,5 +84,78 @@ class TestWriteAheadLog(unittest.TestCase):
         entries = self.wal.read_all_entries()
         self.assertEqual(len(entries), 2)
         self.assertEqual(entries[0].key, "key1")
-        self.assertEqual(entries[1].key, "key1") 
+        self.assertEqual(entries[1].key, "key1")
+    
+
+    def test_concurrent_writes(self):
+        num_threads = 10
+        entries_per_thread = 100
+
+        def write_entries(thread_id):
+            for i in range(entries_per_thread):
+                # print(f"Writing entries from thread {thread_id}")
+                self.wal.write_log_entry(f"txn_{thread_id}", OperationType.INSERT, f"key_{thread_id}_{i}", None, f"value_{thread_id}_{i}")
+            
+        threads = []
+        for t_id in range(num_threads):
+            thread = threading.Thread(target=write_entries, args=(t_id,))
+            threads.append(thread)
+            thread.start()
         
+        for thread in threads:
+            thread.join()
+        
+        print(f"All threads have finished writing.")
+        # Checking results
+        entries = self.wal.read_all_entries()
+        expected_count = num_threads * entries_per_thread
+        print(f"Expected {expected_count} entries, found {len(entries)} entries.")
+
+        self.assertEqual(len(entries), expected_count)
+
+        # Check for unique sequence numbers
+        sequence_numbers = set(entry.sequence_number for entry in entries)
+        if len(sequence_numbers) != len(sequence_numbers):
+            print("WARNING: Found duplicate sequence numbers - race condition detected!")
+            
+    
+    def test_different_data_types(self):
+        test_cases = [
+            ('string_val', "ssss"),
+            ('int_val', 1233),
+            ('float_val', 123.456),
+            ('list_val', [1, 2, 3, "four"]),
+            ('dict_val', {"key": "value", "num": 42}),
+            ('none_val', None),
+            ('nested_val', {"list": [1, {"inner_key": "inner_value"}]})
+        ]
+
+        for key, value in test_cases:
+            self.wal.write_log_entry("test_txn", OperationType.INSERT, key, None, value)
+
+        # Read back and verify
+        entries = self.wal.read_all_entries()
+        self.assertEqual(len(entries), len(test_cases))
+
+        for entry, (expected_key, expected_value) in zip(entries, test_cases):
+            self.assertEqual(entry.key, expected_key)
+            self.assertEqual(entry.new_value, expected_value)
+    
+    def test_large_entires(self):
+        large_value = {"data": "x" * 10000, "numbers": list(range(1000))}
+
+        start_time = time.time()
+        self.wal.write_log_entry("large_txn", OperationType.INSERT, "large_key", None, large_value)
+        end_time = time.time()
+
+        print(f"Time taken to write large entry: {(end_time - start_time) * 1000} milliseconds")
+
+        # Read entry
+        read_start_time = time.time()
+        entries = self.wal.read_all_entries()
+        read_end_time = time.time()
+
+        print(f"Time taken to read entry: {(read_end_time - read_start_time) * 1000} milliseconds")
+        self.assertEqual(len(entries), 1)
+    
+
