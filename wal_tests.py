@@ -1,6 +1,7 @@
 
 import time
-from wal_basic import WriteAheadLog, OperationType, LogEntry
+from constants import OperationType
+from wal_basic import WriteAheadLog
 import unittest
 import tempfile
 import os
