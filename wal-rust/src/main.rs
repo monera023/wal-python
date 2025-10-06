@@ -8,7 +8,7 @@ fn main() -> Result<()> {
 
     let wal_path = String::from("wal.log");
 
-    let mut wal = WriteAheadLog::new(wal_path)
+    let mut wal = WriteAheadLog::new(&wal_path) // Ensure wal_path is passed as &str
         .context("Failed to initialize Write-Ahead Log")?;
 
     wal.write_log_entry("transaction_id".to_string(),
